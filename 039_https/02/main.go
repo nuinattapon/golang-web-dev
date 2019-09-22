@@ -1,33 +1,25 @@
 package main
 
 import (
-	"crypto/tls"
-	"fmt"
-	"log"
 	"net/http"
-	"rsc.io/letsencrypt"
+
+	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 func main() {
-	http.HandleFunc("/", foo)
-
-	var m letsencrypt.Manager
-	if err := m.CacheFile("letsencrypt.cache"); err != nil {
-		log.Fatalln(err)
-	}
-
-	go http.ListenAndServe(":8080", http.HandlerFunc(letsencrypt.RedirectHTTP))
-
-	srv := &http.Server{
-		Addr: ":10443",
-		TLSConfig: &tls.Config{
-			GetCertificate: m.GetCertificate,
-		},
-	}
-
-	log.Fatalln(srv.ListenAndServeTLS("", ""))
-}
-
-func foo(res http.ResponseWriter, req *http.Request) {
-	fmt.Fprintln(res, "Hello TLS")
+	e := echo.New()
+	e.AutoTLSManager.HostPolicy = autocert.HostWhitelist("localhost")
+	// Cache certificates
+	e.AutoTLSManager.Cache = autocert.DirCache("./cache")
+	e.Use(middleware.Recover())
+	e.Use(middleware.Logger())
+	e.GET("/", func(c echo.Context) error {
+		return c.HTML(http.StatusOK, `
+			<h1>Welcome to Echo!</h1>
+			<h3>TLS certificates automatically installed from Let's Encrypt :)</h3>
+		`)
+	})
+	e.Logger.Fatal(e.StartAutoTLS(":443"))
 }
