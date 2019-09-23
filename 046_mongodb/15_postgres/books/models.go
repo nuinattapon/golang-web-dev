@@ -120,4 +120,3 @@ func DeleteBook(r *http.Request) error {
 	}
 	return nil
 }
-}
